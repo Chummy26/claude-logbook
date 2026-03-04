@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io/)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange.svg)](https://code.claude.com/)
+[![Claude Code MCP](https://img.shields.io/badge/Claude%20Code-MCP-green.svg)](https://code.claude.com/)
 [![Status: WIP](https://img.shields.io/badge/Status-Work%20In%20Progress-red.svg)]()
 
 ---
@@ -30,18 +30,18 @@ Every Claude Code session starts from zero. Four hours of debugging, three archi
 npm install
 npm run mcp:init
 
-# Optional: install globally and register for current user in Claude Code
+# Option 2: optional global install (use only if you want a one-command registration)
 npm install -g .
-claude mcp add --scope user --transport stdio logbook -- logbook-cc
+claude mcp add --scope user --transport stdio logbook -- logbook-cc "<ABSOLUTE_PATH_TO_REPO>"
 
-# Option 2: published package on npm (only if package exists in registry)
+# Option 3: published package on npm (only if package exists in registry)
 npm install -g logbook-cc
-claude mcp add --scope user --transport stdio logbook -- logbook-cc
+claude mcp add --scope user --transport stdio logbook -- logbook-cc "<ABSOLUTE_PATH_TO_REPO>"
 ```
 
 That's it.
 
-For local checks, `npm run mcp:init` writes `.mcp.json` with an absolute `dist/server.js` path. This is the reliable path for GitHub users, because `npx logbook-cc` depends on npm package resolution and only works when the package is resolvable from the process working directory.
+For local checks, `npm run mcp:init` writes `.mcp.json` with an absolute `dist/server.js` path and an absolute project path. This is the reliable path for cloned repositories, because `npx logbook-cc` depends on npm package resolution and only works when the package is published and discoverable.
 
 If you prefer fully manual wiring, this is the equivalent command:
 
@@ -50,6 +50,11 @@ claude mcp add --scope user --transport stdio logbook -- node "<ABSOLUTE_PATH_TO
 ```
 
 `logbook-cc` also supports direct launch for debug: `node ./dist/server.js` or `npm start`.
+
+### Plugin note
+
+Claude Code plugins can wrap MCP servers, so this project can be made plugin-friendly later.
+Today it is shipped as a direct MCP package because it is the most reliable route for `git clone && npm install` workflows.
 
 ### Verify
 
@@ -63,7 +68,7 @@ Open any Claude Code session and check your statusline:
 
 ## How it works
 
-logbook is a **single MCP server** that registers itself as a Claude Code plugin. Internally it uses two mechanisms — one visible to Claude, one invisible:
+logbook is a **single MCP server** that Claude Code connects to as a tool provider. Internally it uses two mechanisms — one visible to Claude, one invisible:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
