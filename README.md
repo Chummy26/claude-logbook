@@ -1,2 +1,1 @@
-# claude-logbook
-logbook is an open-source plugin for Claude Code that adds persistent memory, real-time context monitoring, and precise code patching. It remembers past sessions, shows context usage and risk, and applies minimal code edits instead of rewriting entire files—turning Claude Code into a more reliable long-term development partner.
+logbook is an open-source plugin for Claude Code that adds persistent memory, real-time context monitoring, and surgical code patching. It combines the best ideas from multiple open-source projects—such as memory-mcp, lance-context, agent-orchestrator, and tree-sitter—into a single tool that remembers past sessions, tracks context risk, and applies precise minimal code edits to make AI-assisted development more reliable. 
