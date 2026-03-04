@@ -1,0 +1,14 @@
+{
+  "name": "logbook",
+  "version": "0.1.0",
+  "description": "Persistent memory + surgical patch engine + real-time context HUD for Claude Code.",
+  "author": {
+    "name": "Chummy26"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Chummy26/claude-logbook.git"
+  },
+  "entrypoint": ".mcp.json"
+}

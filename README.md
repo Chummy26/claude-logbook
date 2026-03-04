@@ -22,28 +22,27 @@ Every Claude Code session starts from zero. Four hours of debugging, three archi
 ## Install
 
 ```bash
-# Option 1: local checkout / development (recommended for repository usage)
-# Clone first if needed:
-# git clone https://github.com/Chummy26/claude-logbook.git
-# cd claude-logbook
+# Option 1 (recommended): install as a Claude plugin
+# This is the flow used by claude-mem and aligned with current Claude plugin docs.
+# In Claude Code:
 
+# Add the repository's marketplace:
+/plugin marketplace add Chummy26/claude-logbook
+
+# Install the plugin name shown in this repo:
+/plugin install logbook
+
+# Option 2: local development or non-plugin environments
+# from this repo:
 npm install
 npm run mcp:init
-
-# Option 2: optional global install (use only if you want a one-command registration)
-npm install -g .
-claude mcp add --scope user --transport stdio logbook -- logbook-cc "<ABSOLUTE_PATH_TO_REPO>"
-
-# Option 3: published package on npm (only if package exists in registry)
-npm install -g logbook-cc
-claude mcp add --scope user --transport stdio logbook -- logbook-cc "<ABSOLUTE_PATH_TO_REPO>"
 ```
 
-That's it.
+For plugin installations, no `claude mcp add` is required.
 
-For local checks, `npm run mcp:init` writes `.mcp.json` with an absolute `dist/server.js` path and an absolute project path. This is the reliable path for cloned repositories, because `npx logbook-cc` depends on npm package resolution and only works when the package is published and discoverable.
+For local checks, `npm run mcp:init` writes `.mcp.json` with an absolute `dist/server.js` path and an absolute project path. This is useful in CI and when you clone the repo directly.
 
-If you prefer fully manual wiring, this is the equivalent command:
+If you prefer fully manual wiring, this is the equivalent local command:
 
 ```bash
 claude mcp add --scope user --transport stdio logbook -- node "<ABSOLUTE_PATH_TO_REPO>/dist/server.js" "<ABSOLUTE_PATH_TO_REPO>"
@@ -53,8 +52,7 @@ claude mcp add --scope user --transport stdio logbook -- node "<ABSOLUTE_PATH_TO
 
 ### Plugin note
 
-Claude Code plugins can wrap MCP servers, so this project can be made plugin-friendly later.
-Today it is shipped as a direct MCP package because it is the most reliable route for `git clone && npm install` workflows.
+Claude Code plugins can wrap MCP servers; this project is now plugin-ready by default via `.claude-plugin/` and root `.mcp.json` metadata.
 
 ### Verify
 
@@ -72,11 +70,9 @@ logbook is a **single MCP server** that Claude Code connects to as a tool provid
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  logbook-cc init .                                          │
-│  claude mcp add --scope user --transport stdio logbook --    │
-│  node "<ABSOLUTE_PATH_TO_REPO>/dist/server.js"               │
-│      "<ABSOLUTE_PATH_TO_REPO>"                               │
-│  (one command — this is all the user ever runs)              │
+│  /plugin marketplace add Chummy26/claude-logbook               │
+│  /plugin install logbook                                      │
+│  (from Claude Code, first-time only)                          │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
@@ -91,7 +87,7 @@ logbook is a **single MCP server** that Claude Code connects to as a tool provid
           │  • memory_delete         │
           │  • memory_stats          │
           └──────────┬───────────────┘
-                     │ on first connection, auto-registers:
+                     │ on first connection (if enabled):
                      ▼
           ┌──────────────────────────┐
           │   Claude Code Hooks      │  ← runs silently in background
@@ -103,7 +99,7 @@ logbook is a **single MCP server** that Claude Code connects to as a tool provid
           └──────────────────────────┘
 ```
 
-The MCP layer handles what Claude actively requests. The hook layer handles everything that needs to happen passively — capturing context, feeding the HUD, updating memory. The user only ever sees the `claude mcp add` line.
+The MCP layer handles what Claude actively requests. The hook layer handles everything that needs to happen passively — capturing context, feeding the HUD, updating memory.
 
 ---
 
@@ -184,6 +180,10 @@ logbook/
 ### File/Folder Index
 
 - `src/cli.ts`: parse `logbook-cc` commands (`init`, `--help`) and launch MCP server.
+- `.claude-plugin/marketplace.json`: marketplace descriptor used by `/plugin marketplace add`.
+- `.claude-plugin/plugin.json`: plugin metadata required by Claude plugin registry.
+- `.claude-plugin/hooks.json`: event hooks (Stop / PreCompact / SessionEnd) for automatic memory sync.
+- `.mcp.json`: plugin MCP declaration using `${CLAUDE_PLUGIN_ROOT}`.
 - `src/server.ts`: defines `runServer(...)`, registers MCP tools, binds transport and memory store.
 - `src/setup.ts`: reads/writes `.claude/settings.json` and deduplicates hook registration.
 - `src/memory/store.ts`: manages versioned memory persistence and query/index helpers.
@@ -220,7 +220,7 @@ logbook/
 - [ ] VSCode status bar extension
 - [ ] Context quality score (not just percentage)
 - [ ] Configurable memory scopes (project / user / org)
-- [ ] `npx logbook-cc` published to npm
+- [ ] `logbook-cc` published to npm
 
 ### v1.0 — Stable
 - [ ] Rust core (memory store + patch engine)

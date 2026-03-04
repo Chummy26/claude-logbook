@@ -1,0 +1,12 @@
+{
+  "name": "chummy26-logbook",
+  "owner": "Chummy26",
+  "plugins": [
+    {
+      "name": "logbook",
+      "version": "0.1.0",
+      "source": ".",
+      "description": "Persistent memory + patch engine + context HUD for Claude Code."
+    }
+  ]
+}

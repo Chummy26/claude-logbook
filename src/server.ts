@@ -31,6 +31,7 @@ import { applyPatch, previewPatch, generateUnifiedDiff } from "./patch/applier.j
 import { generateTests, getTestCommand } from "./patch/testgen.js";
 import { detectLanguage } from "./patch/parser.js";
 import { autoRegisterHooks } from "./setup.js";
+import { startHudServer, stopHudServer } from "./hud/server.js";
 
 // ─── Schema Constants ───────────────────────────────────────────────────────
 
@@ -54,8 +55,19 @@ const MCP_TOOL_NAMES = [
     "memory_stats",
 ] as const;
 
-function createServer(projectDir: string): McpServer {
-    const store = new MemoryStore(projectDir);
+function resolveProjectDir(argv: string[]): string {
+    const rawProjectDir = argv[0];
+    const envProjectDir =
+        process.env.CLAUDE_PROJECT_DIR ||
+        process.env.CLAUDE_WORKSPACE_DIR ||
+        process.env.CLAUDE_CWD ||
+        process.cwd();
+    return rawProjectDir && !rawProjectDir.startsWith("-")
+        ? path.resolve(rawProjectDir)
+        : path.resolve(envProjectDir);
+}
+
+function createServer(projectDir: string, store: MemoryStore): McpServer {
 
     const server = new McpServer({
         name: "logbook",
@@ -381,20 +393,43 @@ function createServer(projectDir: string): McpServer {
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 export async function runServer(argv: string[] = process.argv.slice(2)): Promise<void> {
-    const rawProjectDir = argv[0];
-    const projectDir = rawProjectDir && !rawProjectDir.startsWith("-")
-        ? path.resolve(rawProjectDir)
-        : process.cwd();
+    const projectDir = resolveProjectDir(argv);
+    const store = new MemoryStore(projectDir);
+
+    const hudPortRaw = process.env.LOGBOOK_HUD_PORT;
+    const hudPort = hudPortRaw ? Number(hudPortRaw) : undefined;
+    const hudHost = process.env.LOGBOOK_HUD_HOST;
+    const hudServer = await startHudServer({
+        projectDir,
+        store,
+        port: hudPort && Number.isFinite(hudPort) && hudPort > 0 ? hudPort : undefined,
+        host: hudHost,
+    });
 
     // Auto-register hooks on first connection
     try {
-        autoRegisterHooks(projectDir);
+        if (!process.env.CLAUDE_PLUGIN_ROOT) {
+            autoRegisterHooks(projectDir);
+        }
     } catch {
         // Non-fatal: hooks are optional for basic operation
     }
 
-    const server = createServer(projectDir);
+    const server = createServer(projectDir, store);
     const transport = new StdioServerTransport();
+
+    const cleanup = async () => {
+        await stopHudServer();
+    };
+    process.once("SIGINT", cleanup);
+    process.once("SIGTERM", cleanup);
+
+    if (hudServer && hudServer.port) {
+        console.log(
+            `[logbook] HUD server available at http://${hudServer.host}:${hudServer.port}`
+        );
+    }
+
     await server.connect(transport);
 }
 

@@ -236,6 +236,25 @@ export function planPatch(
         }
     }
 
+    if (language === "unknown" && diffs.length > 0) {
+        return {
+            filePath,
+            language,
+            targets: [
+                {
+                    nodeId: "raw_entire_file",
+                    nodeName: "entire file",
+                    nodeType: "raw",
+                    originalText: oldContent,
+                    newText: newContent,
+                    startLine: 0,
+                    endLine: Math.max(oldLines.length - 1, 0),
+                },
+            ],
+            description,
+        };
+    }
+
     return {
         filePath,
         language,
