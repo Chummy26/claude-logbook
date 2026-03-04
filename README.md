@@ -22,10 +22,34 @@ Every Claude Code session starts from zero. Four hours of debugging, three archi
 ## Install
 
 ```bash
-claude mcp add logbook -- npx logbook-cc
+# Option 1: local checkout / development (recommended for repository usage)
+# Clone first if needed:
+# git clone https://github.com/Chummy26/claude-logbook.git
+# cd claude-logbook
+
+npm install
+npm run mcp:init
+
+# Optional: install globally and register for current user in Claude Code
+npm install -g .
+claude mcp add --scope user --transport stdio logbook -- logbook-cc
+
+# Option 2: published package on npm (only if package exists in registry)
+npm install -g logbook-cc
+claude mcp add --scope user --transport stdio logbook -- logbook-cc
 ```
 
-That's it. On first connection, logbook registers its own background hooks and starts protecting your sessions automatically. No JSON to edit. No paths to configure.
+That's it.
+
+For local checks, `npm run mcp:init` writes `.mcp.json` with an absolute `dist/server.js` path. This is the reliable path for GitHub users, because `npx logbook-cc` depends on npm package resolution and only works when the package is resolvable from the process working directory.
+
+If you prefer fully manual wiring, this is the equivalent command:
+
+```bash
+claude mcp add --scope user --transport stdio logbook -- node "<ABSOLUTE_PATH_TO_REPO>/dist/server.js" "<ABSOLUTE_PATH_TO_REPO>"
+```
+
+`logbook-cc` also supports direct launch for debug: `node ./dist/server.js` or `npm start`.
 
 ### Verify
 
@@ -43,8 +67,11 @@ logbook is a **single MCP server** that registers itself as a Claude Code plugin
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  claude mcp add logbook -- npx logbook-cc                       │
-│  (one command — this is all the user ever runs)                 │
+│  logbook-cc init .                                          │
+│  claude mcp add --scope user --transport stdio logbook --    │
+│  node "<ABSOLUTE_PATH_TO_REPO>/dist/server.js"               │
+│      "<ABSOLUTE_PATH_TO_REPO>"                               │
+│  (one command — this is all the user ever runs)              │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
@@ -114,26 +141,58 @@ Instead of rewriting entire files:
 
 ```
 logbook/
+├── .logbook/                  # Local runtime cache, session metadata, and generated state
+├── CLAUDE.md                  # Auto-managed memory digest consumed on session start
+├── dist/                      # Compiled output from TypeScript build (server/cli entrypoints)
+│   ├── cli.js
+│   ├── cli.d.ts
+│   ├── server.js
+│   ├── server.d.ts
+│   └── ...
+├── node_modules/              # Dev/runtime dependencies
 ├── src/
-│   ├── server.ts             # MCP server entry — tools, resources, prompts
-│   ├── setup.ts              # Auto-registers hooks on first connection
+│   ├── cli.ts                # CLI entry: install helper + default MCP server bootstrap
+│   ├── server.ts             # MCP protocol server with tools/resources registration
+│   ├── setup.ts              # Hook installer (Stop/PreCompact/SessionEnd)
 │   ├── memory/
-│   │   ├── store.ts          # Local session-memory store + retrieval + consolidation
-│   │   ├── hooks.ts          # Stop / PreCompact / SessionEnd handlers
-│   │   └── inject.ts         # CLAUDE.md auto-update (<!-- logbook --> block)
+│   │   ├── store.ts          # Persistent memory store (add/search/recall/delete)
+│   │   ├── hooks.ts          # Claude Code hook lifecycle handlers
+│   │   ├── inject.ts         # Injects logbook block into CLAUDE.md
+│   │   └── types.ts          # Shared memory/hud/patch/type interfaces
 │   ├── hud/
-│   │   ├── monitor.ts        # Context window tracker
-│   │   ├── risk.ts           # Hallucination risk scorer
-│   │   └── overlay.ts        # Terminal statusline + environment-aware formatting
+│   │   ├── monitor.ts        # Context window + compact timing snapshot collector
+│   │   ├── risk.ts           # Hallucination risk scoring model
+│   │   └── overlay.ts        # Terminal statusline formatter and HUD composition
 │   └── patch/
-│       ├── parser.ts         # Language-aware symbol extraction (regex-first parser)
-│       ├── planner.ts        # Minimal diff planner (Myers algorithm)
-│       ├── applier.ts        # Surgical patch applier
-│       └── testgen.ts        # Auto regression test generator
-├── CLAUDE.md                 # (auto-generated) — logbook manages this block
-├── package.json
-└── README.md
+│       ├── parser.ts         # Language detection + AST-like symbol extraction fallback
+│       ├── planner.ts        # Generates minimal patch plan between source versions
+│       ├── applier.ts        # Applies planned patches and validates results
+│       └── testgen.ts        # Generates regression test scaffolds
+├── test/
+│   └── readme-end-to-end.test.mjs # Contract tests for README/server/wiring behavior
+├── package.json               # Package metadata, scripts, entry points
+├── package-lock.json          # Dependency lockfile
+├── tsconfig.json              # TypeScript compiler settings
+└── README.md                  # Project documentation and install/run guides
 ```
+
+### File/Folder Index
+
+- `src/cli.ts`: parse `logbook-cc` commands (`init`, `--help`) and launch MCP server.
+- `src/server.ts`: defines `runServer(...)`, registers MCP tools, binds transport and memory store.
+- `src/setup.ts`: reads/writes `.claude/settings.json` and deduplicates hook registration.
+- `src/memory/store.ts`: manages versioned memory persistence and query/index helpers.
+- `src/memory/hooks.ts`: parses Claude transcript chunks and persists extracted memories on hook events.
+- `src/memory/inject.ts`: updates `CLAUDE.md` block with active memory summary.
+- `src/memory/types.ts`: defines shared TS interfaces for memory, HUD, patch, and hooks.
+- `src/hud/monitor.ts`: tracks context usage and compact timing signals.
+- `src/hud/risk.ts`: computes risk signal from usage, repetition, and memory health.
+- `src/hud/overlay.ts`: renders `[logbook] ...` statusline in terminal.
+- `src/patch/parser.ts`: extracts parseable symbols/nodes from target files.
+- `src/patch/planner.ts`: computes minimal patch plan from old/new content and description.
+- `src/patch/applier.ts`: applies planned changes and reports success + diffs.
+- `src/patch/testgen.ts`: generates language-appropriate regression tests from patch plan.
+- `test/readme-end-to-end.test.mjs`: validates contract between README + package wiring + runtime behavior.
 
 ---
 

@@ -20,6 +20,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "node:url";
 import { MemoryStore } from "./memory/store.js";
 import { syncClaudeMd } from "./memory/inject.js";
 import { getContextSnapshot, formatContextStatus } from "./hud/monitor.js";
@@ -379,8 +380,11 @@ function createServer(projectDir: string): McpServer {
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
-async function main() {
-    const projectDir = process.argv[2] || process.cwd();
+export async function runServer(argv: string[] = process.argv.slice(2)): Promise<void> {
+    const rawProjectDir = argv[0];
+    const projectDir = rawProjectDir && !rawProjectDir.startsWith("-")
+        ? path.resolve(rawProjectDir)
+        : process.cwd();
 
     // Auto-register hooks on first connection
     try {
@@ -394,7 +398,14 @@ async function main() {
     await server.connect(transport);
 }
 
-main().catch((err) => {
-    console.error("Fatal:", err);
-    process.exit(1);
-});
+async function main() {
+    await runServer(process.argv.slice(2));
+}
+
+const thisScript = fileURLToPath(import.meta.url);
+if (process.argv[1] === thisScript) {
+    main().catch((err) => {
+        console.error("Fatal:", err);
+        process.exit(1);
+    });
+}

@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
+import { 
+  mkdtempSync, 
+  writeFileSync, 
+  readFileSync, 
+  existsSync, 
   rmSync,
 } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -40,11 +41,36 @@ function containsLogbookHook(entries) {
 
 test('package wiring points to compiled server entry', () => {
   const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf-8'));
-  assert.equal(pkg.bin['logbook-cc'], './dist/server.js');
+  assert.equal(pkg.bin['logbook-cc'], './dist/cli.js');
+  assert.equal(pkg.main, 'dist/server.js');
+  assert.equal(pkg.scripts['mcp:init'], 'npm run build && node dist/cli.js init .');
   assert.equal(
     pkg.scripts.test,
     'npm run build && node --test test/readme-end-to-end.test.mjs'
   );
+});
+
+test('logbook CLI can initialize project MCP configuration', () => {
+  const { root, reset } = withTempProject();
+  try {
+    const cliPath = resolve('dist/cli.js');
+    const serverPath = resolve('dist/server.js');
+
+    const output = execFileSync(process.execPath, [cliPath, 'init', root], {
+      encoding: 'utf-8',
+    });
+    assert.ok(output.includes('logbook initialized in'));
+
+    const mcpPath = join(root, '.mcp.json');
+    assert.ok(existsSync(mcpPath), 'Expected .mcp.json to be created');
+
+    const mcp = JSON.parse(readFileSync(mcpPath, 'utf-8'));
+    assert.equal(mcp.mcpServers?.logbook?.command, 'node');
+    assert.equal(resolve(mcp.mcpServers.logbook.args[0]), serverPath);
+    assert.equal(resolve(mcp.mcpServers.logbook.args[1]), root);
+  } finally {
+    reset();
+  }
 });
 
 test('memory persistence + CLAUDE.md injection produces stable block', () => {

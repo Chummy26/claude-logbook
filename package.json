@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "type": "module",
   "bin": {
-    "logbook-cc": "./dist/server.js"
+    "logbook-cc": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/server.js",
+    "mcp:init": "npm run build && node dist/cli.js init .",
+    "start": "node dist/cli.js",
     "test": "npm run build && node --test test/readme-end-to-end.test.mjs",
     "prepublishOnly": "npm run build"
   },
